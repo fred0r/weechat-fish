@@ -25,7 +25,7 @@ Encryption for IRC.
 This script requires:
 
 - [WeeChat](https://www.weechat.org/) (3.x or better) with the python plugin
-- [Python 3](https://www.python.org/) (3.9 or better)
+- [Python 3](https://www.python.org/) (3.6 or better)
 - [PyCryptodome](https://www.pycryptodome.org/) installed in the python environment
 
 ## Installation
