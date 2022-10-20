@@ -476,6 +476,11 @@ def fish_modifier_in2_notice_cb(data, modifier, server_name, string):
     buffer = weechat.info_get('irc_buffer', f'{server_name},{source_str}')
 
     if start_str == 'DH1080_INIT ':
+        key_exchange = weechat.config_string(weechat.config_get('fish.options.key_exchange'))
+        if key_exchange == "off":
+            # we're not going to reply, just pass back for display
+            return string
+
         # respond
         dh = DH1080()
         dh.receive_any(msg_str)
@@ -1143,24 +1148,24 @@ def fish_config_init():
         return
 
     weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_position",
-        "integer", "disable or set encryption marker to beginning or end of prefix",
-        "off|begin|end", 0, 2, "end", "end", 0, "", "", "", "", "", "")
+                              "integer", "disable or set encryption marker to beginning or end of prefix",
+                              "off|begin|end", 0, 2, "end", "end", 0, "", "", "", "", "", "")
 
     weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_character_ebc",
-        "string", "marker character for EBC encrypted messages", "", 0, 0,
-        "#", "#", 0, "", "", "", "", "", "")
+                              "string", "marker character for EBC encrypted messages", "", 0, 0,
+                              "#", "#", 0, "", "", "", "", "", "")
 
     weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_ebc",
-        "color", "marker color for EBC encrypted messages", "", 0, 0,
-        "lightred", "lightred", 0, "", "", "", "", "", "")
+                              "color", "marker color for EBC encrypted messages", "", 0, 0,
+                              "lightred", "lightred", 0, "", "", "", "", "", "")
 
     weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_character_cbc",
-        "string", "marker character for CBC encrypted messages", "", 0, 0,
-        "*", "*", 0, "", "", "", "", "", "")
+                              "string", "marker character for CBC encrypted messages", "", 0, 0,
+                              "*", "*", 0, "", "", "", "", "", "")
 
     weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_cbc",
-        "color", "marker color for CBC encrypted messages", "", 0, 0,
-        "lightgreen", "lightgreen", 0, "", "", "", "", "", "")
+                              "color", "marker color for CBC encrypted messages", "", 0, 0,
+                              "lightgreen", "lightgreen", 0, "", "", "", "", "", "")
 
     # options
     fish_config_section_options = weechat.config_new_section(fish_config_file,
@@ -1170,9 +1175,9 @@ def fish_config_init():
         weechat.config_free(fish_config_file)
         return
 
-    weechat.config_new_option(fish_config_file, fish_config_section_options, "enable_key_exchange",
-        "boolean", "enable DH1080 key exchange", "", 0, 0,
-        "on", "on", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_options, "key_exchange",
+                              "boolean", "enable/disable replying to DH1080 key exchange requests", "", 0, 0,
+                              "on", "on", 0, "", "", "", "", "", "")
 
     # keys
     fish_config_section_keys = weechat.config_new_section(fish_config_file,
