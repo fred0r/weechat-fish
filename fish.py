@@ -17,12 +17,15 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 TODO - Fix TODOs. :D
 
+TODO - Need to check all BlowCrypt/BlowCryptCBC calls and catch exceptions
 TODO - Add configuration file/settings
 TODO - Make prefix character changeable
 TODO - Make prefix color changeable
 TODO - Make prefix location be off/front/back
 TODO - Store keys in config file
 TODO - Look into using sec.* for storage?
+TODO - Calls to weechat.hook_modifier_exec() need to be checked for embedded null values before calling (ValueError
+  exception is thrown). This is due to have mis-matched keys and the decryption is garbage.
 """
 
 import argparse
@@ -715,8 +718,25 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                 fixed_prefix = line['prefix'].strip().replace(" ", "")
 
                 # DECORATE THE OUTGOING MESSAGE
+                position = weechat.config_string(weechat.config_get("fish.look.mark_position"))
+                if record.cbc:
+                    marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_cbc"))
+                    marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_cbc"))
+                else:
+                    marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_ebc"))
+                    marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_ebc"))
+
+                if position == "begin":
+                    prefix = f'{weechat.color(marker_color)}{marker_char}{fixed_prefix}'
+                elif position == "end":
+                    prefix = f'{fixed_prefix}{weechat.color(marker_color)}{marker_char}'
+                else:
+                    return {
+                        'tags': f'{tags},encrypted'
+                    }
+
                 return {
-                    'prefix': f'{weechat.color("red")}*{fixed_prefix}',
+                    'prefix': f'{prefix}',
                     'tags': f'{tags},encrypted',
                 }
 
@@ -754,8 +774,26 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                             target_str = match.group(1)
                             msg_str = match.group(2)[:4] + irc_color_decoded + match.group(2)[-1:]
 
+                            position = weechat.config_string(weechat.config_get("fish.look.mark_position"))
+                            if record.cbc:
+                                marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_cbc"))
+                                marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_cbc"))
+                            else:
+                                marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_ebc"))
+                                marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_ebc"))
+
+                            if position == "begin":
+                                prefix = f'{weechat.color(marker_color)}{marker_char}{line["prefix"]}'
+                            elif position == "end":
+                                prefix = f'{line["prefix"]}{weechat.color(marker_color)}{marker_char}'
+                            else:
+                                return {
+                                    'tags': f'{tags},encrypted',
+                                    'message': f'Topic for {target_str} is "{msg_str}"',
+                                }
+
                             return {
-                                'prefix': f'{weechat.color("red")}*{line["prefix"]}',
+                                'prefix': f'{prefix}',
                                 'tags': f'{tags},encrypted',
                                 'message': f'Topic for {target_str} is "{msg_str}"',
                             }
@@ -815,8 +853,27 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                     target_str = match.group(2)
 
                     if decoded:
+                        position = weechat.config_string(weechat.config_get("fish.look.mark_position"))
+                        if record.cbc:
+                            marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_cbc"))
+                            marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_cbc"))
+                        else:
+                            marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_ebc"))
+                            marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_ebc"))
+
+                        if position == "begin":
+                            prefix = f'{weechat.color(marker_color)}{marker_char}{line["prefix"]}'
+                        elif position == "end":
+                            prefix = f'{line["prefix"]}{weechat.color(marker_color)}{marker_char}'
+                        else:
+                            return {
+                                'tags': f'{tags},encrypted',
+                                'message': f'{nickname_str} has changed topic for {target_str} from '
+                                           f'"{old_topic_str}" to "{new_topic_str}"',
+                            }
+
                         return {
-                            'prefix': f'{weechat.color("red")}*{line["prefix"]}',
+                            'prefix': f'{prefix}',
                             'tags': f'{tags},encrypted',
                             'message': f'{nickname_str} has changed topic for {target_str} from '
                                        f'"{old_topic_str}" to "{new_topic_str}"',
@@ -863,8 +920,26 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                     msg_str = f'{m_split[0]} {irc_color_decoded}'
 
                     # DECORATE THE INCOMING NOTICE
+                    position = weechat.config_string(weechat.config_get("fish.look.mark_position"))
+                    if record.cbc:
+                        marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_cbc"))
+                        marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_cbc"))
+                    else:
+                        marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_ebc"))
+                        marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_ebc"))
+
+                    if position == "begin":
+                        prefix = f'{weechat.color(marker_color)}{marker_char}{line["prefix"]}'
+                    elif position == "end":
+                        prefix = f'{line["prefix"]}{weechat.color(marker_color)}{marker_char}'
+                    else:
+                        return {
+                            'tags': f'{tags},encrypted',
+                            'message': f'{msg_str}'
+                        }
+
                     return {
-                        'prefix': f'{weechat.color("red")}*{line["prefix"]}',
+                        'prefix': f'{prefix}',
                         'tags': f'{tags},encrypted',
                         'message': f'{msg_str}'
                     }
@@ -893,7 +968,7 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                     # check for action
                     match = re.match(
                         r'^\x01ACTION (.*)\x01',
-                        msg_str
+                        irc_color_decoded
                     )
                     if match is not None:
                         # TODO - This seems wrong, investigate this
@@ -901,15 +976,51 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                         fixed_action_prefix = weechat.prefix("action").strip().replace(" ", "")
 
                         # DECORATE THE INCOMING ACTION
+                        position = weechat.config_string(weechat.config_get("fish.look.mark_position"))
+                        if record.cbc:
+                            marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_cbc"))
+                            marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_cbc"))
+                        else:
+                            marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_ebc"))
+                            marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_ebc"))
+
+                        if position == "begin":
+                            prefix = f'{weechat.color(marker_color)}{marker_char}{fixed_action_prefix}'
+                        elif position == "end":
+                            prefix = f'{fixed_action_prefix}{weechat.color(marker_color)}{marker_char}'
+                        else:
+                            return {
+                                'tags': f'{line["tags"]},irc_action,encrypted',
+                                'message': f'{line["prefix"]}{weechat.color("reset")} {match.group(1)}',
+                            }
+
                         return {
-                            'prefix': f'{weechat.color("red")}*{fixed_action_prefix}',
+                            'prefix': f'{prefix}',
+                            'tags': f'{line["tags"]},irc_action,encrypted',
                             'message': f'{line["prefix"]}{weechat.color("reset")} {match.group(1)}',
-                            'tags': f'{line["tags"]},irc_action',
                         }
 
                     # DECORATE THE INCOMING MESSAGE
+                    position = weechat.config_string(weechat.config_get("fish.look.mark_position"))
+                    if record.cbc:
+                        marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_cbc"))
+                        marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_cbc"))
+                    else:
+                        marker_char = weechat.config_string(weechat.config_get("fish.look.mark_character_ebc"))
+                        marker_color = weechat.config_color(weechat.config_get("fish.look.mark_color_ebc"))
+
+                    if position == "begin":
+                        prefix = f'{weechat.color(marker_color)}{marker_char}{line["prefix"]}'
+                    elif position == "end":
+                        prefix = f'{line["prefix"]}{weechat.color(marker_color)}{marker_char}'
+                    else:
+                        return {
+                            'tags': f'{tags},encrypted',
+                            'message': f'{irc_color_decoded}'
+                        }
+
                     return {
-                        'prefix': f'{weechat.color("red")}*{line["prefix"]}',
+                        'prefix': f'{prefix}',
                         'tags': f'{tags},encrypted',
                         'message': f'{irc_color_decoded}'
                     }
@@ -1013,6 +1124,62 @@ def delete_record(network_name: str, target_name: str) -> None:
 
     # not found
     return
+
+
+def fish_config_init():
+    """Configuration file initialization.
+
+    """
+
+    fish_config_file = weechat.config_new(CONFIG_FILE_NAME, "fish_config_reload_cb", "")
+    if not fish_config_file:
+        return
+
+    # look
+    fish_config_section_look = weechat.config_new_section(fish_config_file,
+                                                          "look", 0, 0, "", "", "", "", "", "", "", "", "", "")
+    if not fish_config_section_look:
+        weechat.config_free(fish_config_file)
+        return
+
+    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_position",
+        "integer", "disable or set encryption marker to beginning or end of prefix",
+        "off|begin|end", 0, 2, "end", "end", 0, "", "", "", "", "", "")
+
+    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_character_ebc",
+        "string", "marker character for EBC encrypted messages", "", 0, 0,
+        "#", "#", 0, "", "", "", "", "", "")
+
+    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_ebc",
+        "color", "marker color for EBC encrypted messages", "", 0, 0,
+        "lightred", "lightred", 0, "", "", "", "", "", "")
+
+    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_character_cbc",
+        "string", "marker character for CBC encrypted messages", "", 0, 0,
+        "*", "*", 0, "", "", "", "", "", "")
+
+    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_cbc",
+        "color", "marker color for CBC encrypted messages", "", 0, 0,
+        "lightblue", "lightblue", 0, "", "", "", "", "", "")
+
+    # options
+    fish_config_section_options = weechat.config_new_section(fish_config_file,
+                                                             "options", 0, 0, "", "", "", "", "", "", "", "", "", "")
+
+    if not fish_config_section_options:
+        weechat.config_free(fish_config_file)
+        return
+
+    weechat.config_new_option(fish_config_file, fish_config_section_options, "enable_key_exchange",
+        "boolean", "enable DH1080 key exchange", "", 0, 0,
+        "on", "on", 0, "", "", "", "", "", "")
+
+    # keys
+    fish_config_section_keys = weechat.config_new_section(fish_config_file,
+                                                          "keys", 1, 1, "", "", "", "", "", "", "", "", "", "")
+    if not fish_config_section_keys:
+        weechat.config_free(fish_config_file)
+        return
 
 
 def fish_cmd(data, buffer, args):
@@ -1232,6 +1399,9 @@ if __name__ == '__main__' and import_ok:
         ' || remove',
 
         'fish_cmd', '')
+
+    # Initialize configuration.
+    fish_config_init()
 
     # Hook incoming notices to process DH1080 exchanges.
     weechat.hook_modifier('irc_in2_notice', 'fish_modifier_in2_notice_cb', '')
