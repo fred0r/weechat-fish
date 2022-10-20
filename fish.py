@@ -1160,7 +1160,7 @@ def fish_config_init():
 
     weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_cbc",
         "color", "marker color for CBC encrypted messages", "", 0, 0,
-        "lightblue", "lightblue", 0, "", "", "", "", "", "")
+        "lightgreen", "lightgreen", 0, "", "", "", "", "", "")
 
     # options
     fish_config_section_options = weechat.config_new_section(fish_config_file,
