@@ -18,10 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 TODO - Fix TODOs. :D
 
 TODO - Need to check all BlowCrypt/BlowCryptCBC calls and catch exceptions
-TODO - Add configuration file/settings
-TODO - Make prefix character changeable
-TODO - Make prefix color changeable
-TODO - Make prefix location be off/front/back
 TODO - Store keys in config file
 TODO - Look into using sec.* for storage?
 TODO - Calls to weechat.hook_modifier_exec() need to be checked for embedded null values before calling (ValueError
