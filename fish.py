@@ -31,6 +31,7 @@ import os
 import re
 import struct
 from dataclasses import dataclass
+from operator import attrgetter
 
 from Crypto.Cipher import Blowfish
 from Crypto.Util.strxor import strxor
@@ -1217,6 +1218,9 @@ def fish_cmd(data, buffer, args):
 
     # list keys
     if parsed_args.command is None or parsed_args.command == 'list':
+        # sort prior to displaying
+        records.sort(key=attrgetter('network', 'target'))
+
         # list out the keys
         weechat.prnt(buffer, f'{SCRIPT_NAME}: Current Keys:')
         for record in records:
