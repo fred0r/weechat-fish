@@ -1035,18 +1035,16 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
     return dict()
 
 
-def invalid_server(server: str):
-    """Check a user supplied string for a IRC server.
+def invalid_server(server: str, connected_check: bool):
+    """Check a user supplied string for valid IRC server.
 
-    Two checks are made:
-     - IRC server must exist
-     - Must be currently connected to IRC server
+    First we check to ensure the IRC server exists, and optionally check if we're connected.
 
     Return:
 
-    With both of the above conditions true this function will return False.
+    If any check fails, a string with an error message will be returned.
 
-    If either fail, a string with an error message will be returned.
+    On success, this function returns False.
     """
 
     # assume we were passed a good server
@@ -1058,7 +1056,7 @@ def invalid_server(server: str):
         return 'Error: infolist_get() call failed.'
     rc = weechat.infolist_next(infolist)
     if rc:
-        if not weechat.infolist_integer(infolist, 'is_connected'):
+        if connected_check and not weechat.infolist_integer(infolist, 'is_connected'):
             ret = f'Error: You are not currently connected to {server}.'
     else:
         ret = f'Error: No server named "{server}" found.'
@@ -1245,18 +1243,23 @@ def fish_cmd(data, buffer, args):
         return weechat.WEECHAT_RC_OK
 
     # check server (any of the following 3 commands will use server argument)
+    server_check_msg = False
+    connected_check_msg = False
     if parsed_args.server:
-        error_msg = invalid_server(parsed_args.server)
-        if error_msg:
-            # bad server
-            weechat.prnt(buffer, f'{SCRIPT_NAME}: {error_msg}')
-            return weechat.WEECHAT_RC_ERROR
+        server_check_msg = invalid_server(parsed_args.server, False)
+        connected_check_msg = invalid_server(parsed_args.server, True)
         server_name = parsed_args.server
     else:
         server_name = weechat.buffer_get_string(buffer, 'localvar_server')
 
     # initiate key exchange
     if parsed_args.command == 'exchange':
+        # we need to be connected to the server, so check now
+        if connected_check_msg:
+            # bad server
+            weechat.prnt(buffer, f'{SCRIPT_NAME}: {connected_check_msg}')
+            return weechat.WEECHAT_RC_ERROR
+
         # check nick
         if parsed_args.nick:
             target = parsed_args.nick
@@ -1308,6 +1311,12 @@ def fish_cmd(data, buffer, args):
 
     # handle setting of keys
     if parsed_args.command == 'set':
+        # we need to have a valid server supplied, so check now
+        if server_check_msg:
+            # bad server
+            weechat.prnt(buffer, f'{SCRIPT_NAME}: {server_check_msg}')
+            return weechat.WEECHAT_RC_ERROR
+
         # ensure we have needed variables
         if not server_name:
             # bad server
