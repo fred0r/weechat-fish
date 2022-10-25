@@ -17,10 +17,7 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
 TODO - Fix TODOs. :D
 
-TODO - Need to check all BlowCrypt/BlowCryptCBC calls and catch exceptions
 TODO - Look into using sec.* for storage?
-TODO - Calls to weechat.hook_modifier_exec() need to be checked for embedded null values before calling (ValueError
-  exception is thrown). This is due to have mis-matched keys and the decryption is garbage.
 """
 
 import argparse
@@ -411,7 +408,7 @@ class Record:
     """Dataclass to hold keys/DH objects.
 
     TODO - expire DH object
-     The DH object could be expired after a certain amout of time (maximum IRC lag timeout) and cleaned up.
+     The DH object could be expired after a certain amount of time (maximum IRC lag timeout) and cleaned up.
      Currently, they will stick around until script restart if they don't complete.
     """
     network: str
@@ -568,10 +565,14 @@ def fish_modifier_out_privmsg_cb(data, modifier, server_name, string):
     if record is None:
         return string
 
-    if record.cbc:
-        msg = BlowCryptCBC(record.key).pack(msg_str)
-    else:
-        msg = BlowCrypt(record.key).pack(msg_str)
+    try:
+        if record.cbc:
+            msg = BlowCryptCBC(record.key).pack(msg_str)
+        else:
+            msg = BlowCrypt(record.key).pack(msg_str)
+    except ValueError:
+        weechat.prnt('', f'{SCRIPT_NAME}: failed to encrypt outgoing privmsg. not sent.')
+        return ''
 
     return f'{msg_prefix_str}{msg}'
 
@@ -615,10 +616,14 @@ def fish_modifier_out_notice_cb(data, modifier, server_name, string):
     if record is None:
         return string
 
-    if record.cbc:
-        notice = BlowCryptCBC(record.key).pack(notice_str)
-    else:
-        notice = BlowCrypt(record.key).pack(notice_str)
+    try:
+        if record.cbc:
+            notice = BlowCryptCBC(record.key).pack(notice_str)
+        else:
+            notice = BlowCrypt(record.key).pack(notice_str)
+    except ValueError:
+        weechat.prnt('', f'{SCRIPT_NAME}: failed to encrypt outgoing notice. not sent.')
+        return ''
 
     return f'{msg_prefix_str}{notice}'
 
@@ -652,10 +657,14 @@ def fish_modifier_out_topic_cb(data, modifier, server_name, string):
     if record is None:
         return string
 
-    if record.cbc:
-        topic = BlowCryptCBC(record.key).pack(topic_str)
-    else:
-        topic = BlowCrypt(record.key).pack(topic_str)
+    try:
+        if record.cbc:
+            topic = BlowCryptCBC(record.key).pack(topic_str)
+        else:
+            topic = BlowCrypt(record.key).pack(topic_str)
+    except ValueError:
+        weechat.prnt('', f'{SCRIPT_NAME}: failed to encrypt outgoing topic command. not sent.')
+        return ''
 
     return f'{msg_prefix_str}{topic}'
 
@@ -768,7 +777,10 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                         if record.key is not None:
                             cls = find_msg_cls(msg_str)
                             msg_str = cls(record.key).unpack(msg_str)
-                            irc_color_decoded = weechat.hook_modifier_exec('irc_color_decode', '1', msg_str)
+                            if '\x00' in msg_str:
+                                weechat.prnt(buffer, f'{SCRIPT_NAME}: found null byte in decoded message. bad key?')
+                            else:
+                                irc_color_decoded = weechat.hook_modifier_exec('irc_color_decode', '1', msg_str)
 
                             # TODO - This seems fragile, investigate this
                             # add back in control codes
@@ -833,7 +845,10 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                         if record.key is not None:
                             cls = find_msg_cls(old_topic_str)
                             old_topic = cls(record.key).unpack(old_topic_str)
-                            old_topic_str = weechat.hook_modifier_exec('irc_color_decode', '1', old_topic)
+                            if '\x00' in old_topic:
+                                weechat.prnt(buffer, f'{SCRIPT_NAME}: found null byte in decoded topic. bad key?')
+                            else:
+                                old_topic_str = weechat.hook_modifier_exec('irc_color_decode', '1', old_topic)
                             decoded = True
                     # TODO - This seems fragile, investigate this
                     # add back in control codes
@@ -843,7 +858,10 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                         if record.key is not None:
                             cls = find_msg_cls(new_topic_str)
                             new_topic = cls(record.key).unpack(new_topic_str)
-                            new_topic_str = weechat.hook_modifier_exec('irc_color_decode', '1', new_topic)
+                            if '\x00' in new_topic:
+                                weechat.prnt(buffer, f'{SCRIPT_NAME}: found null byte in decoded topic. bad key?')
+                            else:
+                                new_topic_str = weechat.hook_modifier_exec('irc_color_decode', '1', new_topic)
                             decoded = True
                     # TODO - This seems fragile, investigate this
                     # add back in control codes
@@ -915,7 +933,10 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                 if record.key is not None:
                     cls = find_msg_cls(msg_str)
                     msg_str = cls(record.key).unpack(msg_str)
-                    irc_color_decoded = weechat.hook_modifier_exec('irc_color_decode', '1', msg_str)
+                    if '\x00' in msg_str:
+                        weechat.prnt(buffer, f'{SCRIPT_NAME}: found null byte in decoded notice. bad key?')
+                    else:
+                        irc_color_decoded = weechat.hook_modifier_exec('irc_color_decode', '1', msg_str)
 
                     # Put our notice message payload back together.
                     msg_str = f'{m_split[0]} {irc_color_decoded}'
@@ -964,7 +985,10 @@ def fish_hook_line_cb(data: str, line: dict[str, str]) -> dict[str, str]:
                 if record.key is not None:
                     cls = find_msg_cls(msg_str)
                     msg_str = cls(record.key).unpack(msg_str)
-                    irc_color_decoded = weechat.hook_modifier_exec('irc_color_decode', '1', msg_str)
+                    if '\x00' in msg_str:
+                        weechat.prnt(buffer, f'{SCRIPT_NAME}: found null byte in decoded message. bad key?')
+                    else:
+                        irc_color_decoded = weechat.hook_modifier_exec('irc_color_decode', '1', msg_str)
 
                     # check for action
                     match = re.match(
