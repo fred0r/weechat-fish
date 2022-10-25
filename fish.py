@@ -18,7 +18,6 @@ along with this program.  If not, see <https://www.gnu.org/licenses/>.
 TODO - Fix TODOs. :D
 
 TODO - Need to check all BlowCrypt/BlowCryptCBC calls and catch exceptions
-TODO - Store keys in config file
 TODO - Look into using sec.* for storage?
 TODO - Calls to weechat.hook_modifier_exec() need to be checked for embedded null values before calling (ValueError
   exception is thrown). This is due to have mis-matched keys and the decryption is garbage.
@@ -1126,60 +1125,94 @@ def delete_record(network_name: str, target_name: str) -> None:
     return
 
 
+def config_keys_read(data: str, config_file: str, section: str, option_name: str, value: str) -> int:
+    # read in the keys
+    try:
+        option_name_split = option_name.split(',')
+        value_split = value.split(',')
+
+        record = find_or_create_record(option_name_split[0], option_name_split[1])
+        record.key = value_split[0]
+        record.cbc = value_split[1]
+
+        return weechat.WEECHAT_CONFIG_OPTION_SET_OK_CHANGED
+    except IndexError:
+        return weechat.WEECHAT_CONFIG_OPTION_SET_ERROR
+
+
+def config_keys_write(data: str, config_file: str, section_name: str) -> int:
+    # write out the section
+    weechat.config_write_line(config_file, "keys", "")
+
+    # write out the keys
+    for record in records:
+        name = f'{record.network},{record.target}'
+        value = f'{record.key},{record.cbc}'
+        weechat.config_write_line(config_file, name, value)
+
+    return weechat.WEECHAT_CONFIG_WRITE_OK
+
+
 def fish_config_init():
     """Configuration file initialization.
 
     """
 
-    fish_config_file = weechat.config_new(CONFIG_FILE_NAME, "fish_config_reload_cb", "")
+    fish_config_file = weechat.config_new(CONFIG_FILE_NAME, 'fish_config_reload_cb', '')
     if not fish_config_file:
         return
 
     # look
     fish_config_section_look = weechat.config_new_section(fish_config_file,
-                                                          "look", 0, 0, "", "", "", "", "", "", "", "", "", "")
+                                                          'look', 0, 0, '', '', '', '', '', '', '', '', '', '')
     if not fish_config_section_look:
         weechat.config_free(fish_config_file)
         return
 
-    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_position",
-                              "integer", "disable or set encryption marker to beginning or end of prefix",
-                              "off|begin|end", 0, 2, "end", "end", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_look, 'mark_position',
+                              'integer', 'disable or set encryption marker to beginning or end of prefix',
+                              'off|begin|end', 0, 2, 'end', 'end', 0, '', '', '', '', '', '')
 
-    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_character_ebc",
-                              "string", "marker character for EBC encrypted messages", "", 0, 0,
-                              "#", "#", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_look, 'mark_character_ebc',
+                              'string', 'marker character for EBC encrypted messages', '', 0, 0,
+                              '#', '#', 0, '', '', '', '', '', '')
 
-    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_ebc",
-                              "color", "marker color for EBC encrypted messages", "", 0, 0,
-                              "lightred", "lightred", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_look, 'mark_color_ebc',
+                              'color', 'marker color for EBC encrypted messages', '', 0, 0,
+                              'lightred', 'lightred', 0, '', '', '', '', '', '')
 
-    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_character_cbc",
-                              "string", "marker character for CBC encrypted messages", "", 0, 0,
-                              "*", "*", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_look, 'mark_character_cbc',
+                              'string', 'marker character for CBC encrypted messages', '', 0, 0,
+                              '*', '*', 0, '', '', '', '', '', '')
 
-    weechat.config_new_option(fish_config_file, fish_config_section_look, "mark_color_cbc",
-                              "color", "marker color for CBC encrypted messages", "", 0, 0,
-                              "lightgreen", "lightgreen", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_look, 'mark_color_cbc',
+                              'color', 'marker color for CBC encrypted messages', '', 0, 0,
+                              'lightgreen', 'lightgreen', 0, '', '', '', '', '', '')
 
     # options
     fish_config_section_options = weechat.config_new_section(fish_config_file,
-                                                             "options", 0, 0, "", "", "", "", "", "", "", "", "", "")
+                                                             'options', 0, 0, '', '', '', '', '', '', '', '', '', '')
 
     if not fish_config_section_options:
         weechat.config_free(fish_config_file)
         return
 
-    weechat.config_new_option(fish_config_file, fish_config_section_options, "key_exchange",
-                              "boolean", "enable/disable replying to DH1080 key exchange requests", "", 0, 0,
-                              "on", "on", 0, "", "", "", "", "", "")
+    weechat.config_new_option(fish_config_file, fish_config_section_options, 'key_exchange',
+                              'boolean', 'enable/disable replying to DH1080 key exchange requests', '', 0, 0,
+                              'on', 'on', 0, '', '', '', '', '', '')
 
     # keys
     fish_config_section_keys = weechat.config_new_section(fish_config_file,
-                                                          "keys", 1, 1, "", "", "", "", "", "", "", "", "", "")
+                                                          'keys', 0, 0,
+                                                          'config_keys_read', '',
+                                                          'config_keys_write', '',
+                                                          '', '', '', '', '', '')
     if not fish_config_section_keys:
         weechat.config_free(fish_config_file)
         return
+
+    # return our config file pointer
+    return fish_config_file
 
 
 def fish_cmd(data, buffer, args):
@@ -1414,8 +1447,8 @@ if __name__ == '__main__' and import_ok:
 
         'fish_cmd', '')
 
-    # Initialize configuration.
-    fish_config_init()
+    # Initialize/read configuration file.
+    weechat.config_read(fish_config_init())
 
     # Hook incoming notices to process DH1080 exchanges.
     weechat.hook_modifier('irc_in2_notice', 'fish_modifier_in2_notice_cb', '')
