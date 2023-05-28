@@ -29,9 +29,6 @@ import struct
 from dataclasses import dataclass
 from operator import attrgetter
 
-from Crypto.Cipher import Blowfish
-from Crypto.Util.strxor import strxor
-
 SCRIPT_NAME = 'fish'
 SCRIPT_AUTHOR = 'orkim <d.orkim@gmail.com>'
 SCRIPT_VERSION = '0.1'
@@ -49,10 +46,22 @@ except ImportError:
     import_ok = False
 
 try:
-    import Crypto.Cipher.Blowfish
+    from Crypto.Cipher import Blowfish
 except ImportError:
-    print(f'pycryptodome must be installed to use {SCRIPT_NAME}.py')
-    import_ok = False
+    try:
+        from Cryptodome.Cipher import Blowfish
+    except ImportError:
+        print(f"pycryptodome must be installed to use {SCRIPT_NAME}")
+        import_ok = False
+
+try:
+    from Crypto.Util.strxor import strxor
+except ImportError:
+    try:
+        from Cryptodome.Util.strxor import strxor
+    except ImportError:
+        print(f"pycryptodome must be installed to use {SCRIPT_NAME}")
+        import_ok = False
 
 records = []
 
