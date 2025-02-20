@@ -85,10 +85,10 @@ except ImportError:
     import_ok = False
 
 try:
-    import Crypto.Cipher.Blowfish as CryptoBlowfish
+    import Cryptodome.Cipher.Blowfish as CryptoBlowfish
 except ImportError:
     try:
-        import Cryptodome.Cipher.Blowfish as CryptoBlowfish
+        import Crypto.Cipher.Blowfish as CryptoBlowfish
     except ImportError:
         print("Pycryptodome must be installed to use fish")
         import_ok = False
