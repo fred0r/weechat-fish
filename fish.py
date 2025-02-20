@@ -850,8 +850,6 @@ def fish_unload_cb():
 #
 
 def fish_cmd_blowkey(data, buffer, args):
-    global fish_DH1080ctx
-
     if args in ['', 'list']:
         fish_list_keys(buffer)
 
