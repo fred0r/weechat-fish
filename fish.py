@@ -354,7 +354,9 @@ def blowcrypt_unpack(msg, key):
     if rest.startswith('*'):  # CBC mode
         cbc = True
         rest = rest[1:]
-        if len(rest) % 4:
+        if len(rest) % 4 == 1:
+            rest = rest[:-1]
+        elif len(rest) % 4:
             rest += '=' * (4 - len(rest) % 4)
         raw = base64.b64decode(rest)
 
