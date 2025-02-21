@@ -530,8 +530,11 @@ def dh1080_pack(ctx):
     if ctx.state == 0:
         ctx.state = 1
         cmd = "DH1080_INIT "
-    else:
+    elif ctx.state <= 2:
+        ctx.state += 1
         cmd = "DH1080_FINISH "
+    else:
+        return None
     return cmd + dh1080_b64encode(int2bytes(ctx.public)) + (
         " CBC" if ctx.cbc else "")
 
@@ -559,10 +562,10 @@ def dh1080_unpack(msg, ctx):
         except Exception as e:
             raise ValueError from e
 
-    elif ctx.state == 1:
+    elif ctx.state <= 2:
         if not msg.startswith("DH1080_FINISH "):
             raise ValueError
-        ctx.state = 1
+        ctx.state += 1
         try:
             cmd, public_raw, *rest = msg.split(' ')
             public = bytes2int(dh1080_b64decode(public_raw))
@@ -575,6 +578,9 @@ def dh1080_unpack(msg, ctx):
 
         except Exception as e:
             raise ValueError from e
+
+    else:
+        raise ValueError
 
     return True
 
@@ -640,7 +646,11 @@ def fish_modifier_in_notice_cb(data, modifier, server_name, string):
     if (is_direct and text.startswith('DH1080_FINISH ') and
             target in fish_DH1080ctx and
             dh1080_unpack(text, fish_DH1080ctx[target])):
-        fish_alert(buffer, f'Key exchange for {target} successful')
+        if reply := dh1080_pack(fish_DH1080ctx[target]):
+            fish_key_delete(target)
+            weechat.command(
+                buffer, f'/mute notice -server {server_name} {dest} {reply}')
+        fish_alert(buffer, f'Key exchange with {target} successful.')
         fish_key_set(target, dh1080_secret(fish_DH1080ctx[target]),
                      fish_DH1080ctx[target].cbc)
         del fish_DH1080ctx[target]
@@ -656,11 +666,10 @@ def fish_modifier_in_notice_cb(data, modifier, server_name, string):
         reply = dh1080_pack(fish_DH1080ctx[target])
         fish_key_delete(target)
         weechat.command(
-            buffer, f"/mute notice -server {server_name} {dest} {reply}")
+            buffer, f'/mute notice -server {server_name} {dest} {reply}')
         fish_key_set(target, dh1080_secret(
             fish_DH1080ctx[target]), fish_DH1080ctx[target].cbc)
-        fish_alert(buffer, f"Key exchange initiated by {target}. Key set.")
-        del fish_DH1080ctx[target]
+        fish_alert(buffer, f'Key exchange initiated by {target}. Key set.')
 
         return ""
 
