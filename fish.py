@@ -131,7 +131,7 @@ def fish_config_keys_create_cb(data, config_file, section, option_name, value):
 def fish_config_keys_delete_cb(data, config_file, section, option):
     option_name = weechat.config_option_get_string(option, 'name')
     weechat.config_option_free(option)
-    server, name = option_name.split('/')
+    server, name = option_name.split('/', 1)
     buffer = weechat.info_get("irc_buffer", f"{server},{name}")
     if buffer:
         fish_state_set(buffer, None)
@@ -823,7 +823,7 @@ def fish_line_cb(data: str, line):
     state = 'plaintext'
     for tag in line['tags'].split(','):
         if tag.startswith('irc_tag_fish='):
-            _, state = tag.split('=')
+            _, state = tag.split('=', 1)
         if tag == 'self_msg':
             _, cbc = key
             state = 'cbc' if cbc else 'ecb'
@@ -990,7 +990,7 @@ def fish_announce_encrypted(buffer, target, cbc):
     if fish_state_get(buffer) == new_state:
         return
 
-    server, nick = target.split('/')
+    server, nick = target.split('/', 1)
 
     if (weechat.info_get('irc_is_nick', nick) and
             weechat.buffer_get_string(buffer, 'localvar_type') != 'private'):
