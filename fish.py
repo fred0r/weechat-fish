@@ -1012,20 +1012,14 @@ def fish_announce_unencrypted(buffer, target):
         return
 
     if weechat.config_boolean(fish_config_option['announce']):
-        fish_alert(
-            buffer, f"Messages to/from {target} are {
-                weechat.color(
-                    weechat.config_color(fish_config_option['alert']))}*not*{
-                weechat.color('chat')} encrypted.")
-
+        fish_alert(buffer, f"Messages to/from {target} are "
+                   f"{weechat.color(weechat.config_color(fish_config_option['alert']))}*not*"
+                   f"{weechat.color('chat')} encrypted.")
     fish_state_set(buffer, "plaintext")
 
 
 def fish_alert(buffer, message):
-    mark = f"{
-        weechat.color(weechat.config_color(fish_config_option['alert']))}{
-        weechat.config_string(fish_config_option['marker'])}{
-        weechat.color('chat')}"
+    mark = f"{weechat.color(weechat.config_color(fish_config_option['alert']))}{weechat.config_string(fish_config_option['marker'])}{weechat.color('chat')}"
     weechat.prnt(buffer, f'{mark}\t{message}')
 
 
